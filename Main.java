@@ -1,52 +1,69 @@
 import java.util.Scanner;
-import java.util.Arrays;
 
 public class Main {
-    private static final double EPSILON = 1e-6;
-
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
-        // Input coefficients for the objective function
-        System.out.println("C (coefficients of objective function): ");
-        double[] C = inputVector(scanner);
+        System.out.print("S: ");
+        double[] supply = readVector(scanner);
 
-        System.out.print("Number of constraints (n): ");
-        int numConstraints = Integer.parseInt(scanner.nextLine().trim());
+        System.out.println("C:");
+        double[][] costMatrix = readMatrix(scanner, supply.length);
 
-        System.out.println("A (constraints matrix): ");
-        double[][] A = inputMatrix(scanner, numConstraints);
+        System.out.print("D: ");
+        double[] demand = readVector(scanner);
 
-        System.out.println("b (right-hand side of constraints): ");
-        double[] b = inputVector(scanner);
+        checkBalance(supply,demand);
+        printInputTable(costMatrix, supply, demand);
+        System.out.println("Initial basic feasible solutions:");
+        northWest(costMatrix,supply,demand);
+        vogel(costMatrix,supply,demand);
+        russell(costMatrix,supply,demand);
 
-        System.out.print("eps (tolerance): ");
-        double eps = scanner.nextDouble();
-
-        double[] x0 = generateInitialPoint(A, b, C.length);
-
-        // Execute the Interior-Point Method with α = 0.5 and α = 0.9
-        System.out.println("\nRunning Interior-Point Method for α = 0.5:");
-        method(x0, 0.5, eps, b, C, A);
-
-        System.out.println("\nRunning Interior-Point Method for α = 0.9:");
-        method(x0, 0.9, eps, b, C, A);
-
-        // Execute the Simplex Method
-        System.out.println("\n----------");
-        System.out.println("Running Simplex Method:");
-        simplexMethod(C, A, b, C.length ,numConstraints);
     }
 
-    public static double[] generateInitialPoint(double[][] A, double[] b, int numVariables) {
-        double[] x0 = new double[numVariables];
-        for (int i = 0; i < numVariables; i++) {
-            x0[i] = 1.0;
+    private static void checkBalance(double[] supply, double[] demand){
+        double value = 0;
+        for(int i = 0; i < 3; i++){
+            value+=supply[i];
         }
-        return x0;
+        for(int i = 0; i < 4; i++){
+            value-=demand[i];
+        }
+        if(value!=0){
+            System.out.println("The problem is not balanced!");
+            System.exit(0);
+        }
     }
 
-    public static double[] inputVector(Scanner scanner) {
+
+    private static void printInputTable(double[][] costMatrix, double[] supply, double[] demand) {
+        int rows = costMatrix.length;
+        int cols = costMatrix[0].length;
+
+        System.out.print("     ");
+        for (int j = 0; j < cols; j++) {
+            System.out.printf("D%d  ", j + 1);
+        }
+        System.out.println("Supply");
+
+        for (int i = 0; i < rows; i++) {
+            System.out.printf("S%d  ", i + 1);
+            for (int j = 0; j < cols; j++) {
+                System.out.printf("%.3f  ", costMatrix[i][j]);
+            }
+            System.out.printf("%.3f\n", supply[i]);
+        }
+
+        System.out.print("Demand: ");
+        for (int j = 0; j < cols; j++) {
+            System.out.printf("%.3f  ", demand[j]);
+        }
+        System.out.println();
+        System.out.println();
+    }
+
+    private static double[] readVector(Scanner scanner) {
         String input = scanner.nextLine();
         String[] parts = input.split(" ");
         double[] vector = new double[parts.length];
@@ -56,7 +73,8 @@ public class Main {
         return vector;
     }
 
-    public static double[][] inputMatrix(Scanner scanner, int rows) {
+
+    public static double[][] readMatrix(Scanner scanner, int rows) {
         double[][] matrix = new double[rows][];
         for (int i = 0; i < rows; i++) {
             String[] input = scanner.nextLine().split(" ");
@@ -68,345 +86,310 @@ public class Main {
         return matrix;
     }
 
-    public static void method(double[] x0, double alpha, double eps, double[] b, double[] C, double[][] A) {
-        boolean sol = true;
-        for (double[] row : A) {
-            boolean neg = true;
-            for (double value : row) {
-                if (value > 0) {
-                    neg = false;
+    public static void printMatrix(double[][] matrix) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 4; j++) {
+                System.out.printf("%.3f ", matrix[i][j]);
+            }
+            System.out.println();
+        }
+        System.out.println();
+    }
+
+    public static double[][] northWest(double[][] cost, double[] supply, double[] demand){
+        double[][] result = new double[3][4];
+        double[] newDemand = new double[4];
+        double[] newSupply = new double[3];
+        for(int i = 0; i<3; i++){
+            for(int j = 0; j<4; j++){
+                result[i][j] = 0;
+            }
+            newSupply[i] = supply[i];
+        }
+        for(int j = 0; j<4; j++){
+            newDemand[j] = demand[j];
+        }
+        int curSup = 0,curDem = 0;
+
+        while(curSup <= 2 && curDem <=3){
+
+            if(newDemand[curDem]<newSupply[curSup]){
+                result[curSup][curDem] = newDemand[curDem];
+                newSupply[curSup] = newSupply[curSup]-newDemand[curDem];
+                newDemand[curDem] = 0;
+                curDem++;
+            } else if (newDemand[curDem]>newSupply[curSup]) {
+                result[curSup][curDem] = newSupply[curSup];
+                newDemand[curDem] = newDemand[curDem]-newSupply[curSup];
+                newSupply[curSup] = 0;
+                curSup++;
+            } else {
+                result[curSup][curDem] = newSupply[curSup];
+                curSup++;
+                curDem++;
+            }
+        }
+        System.out.println("1.Using North-West corner method:");
+        printMatrix(result);
+        return result;
+    }
+
+    public static void findDiff(double[] ColDif, double[] RowDif, double[][] cost, double[] newDemand, double[] newSupply) {
+        for(int i = 0; i < 4; i++){
+            if(newDemand[i]==0){
+                ColDif[i]=-1;
+                continue;
+            }
+            double min1 = Double.MAX_VALUE;
+            double min2 = Double.MAX_VALUE;
+            for(int j = 0; j < 3; j++){
+                if(min2>cost[j][i] && newSupply[j]!=0){
+                    min2 = cost[j][i];
+                    if(min1>min2){
+                        min2 = min1;
+                        min1 = cost[j][i];
+                    }
                 }
             }
-            if (neg) {
-                sol = false;
+            if(min2 != Double.MAX_VALUE) {
+                ColDif[i] = min2 - min1;
+            }else{
+                ColDif[i] = Double.MAX_VALUE;
             }
         }
-        if (!sol) {
-            System.out.println("The problem does not have solution");
-            return;
-        }
+        for(int i = 0; i < 3; i++){
+            if(newSupply[i]==0){
+                RowDif[i]=-1;
+                continue;
+            }
+            double min1 = Double.MAX_VALUE;
+            double min2 = Double.MAX_VALUE;
+            for(int j = 0; j < 4; j++){
+                if(min2>cost[i][j] && newDemand[j]!=0){
+                    min2 = cost[i][j];
+                    if(min1>min2){
+                        min2 = min1;
+                        min1 = cost[i][j];
+                    }
+                }
+            }
+            if(min2 != Double.MAX_VALUE) {
+                RowDif[i] = min2-min1;
+            }else{
+                RowDif[i] = Double.MAX_VALUE;
+            }
 
-        double[] bound = matrixVectorMultiply(A, x0);
-        for (int i = 0; i < A.length; i++) {
-            if (bound[i] > b[i]) {
-                System.out.println("The method is not applicable");
-                return;
+        }
+    }
+
+    public static double[][] vogel(double[][] cost, double[] supply, double[] demand){
+        double[][] result = new double[3][4];
+        double[] newDemand = new double[4];
+        double[] newSupply = new double[3];
+        for(int i = 0; i<3; i++){
+            for(int j = 0; j<4; j++){
+                result[i][j] = 0;
+            }
+            newSupply[i] = supply[i];
+        }
+        for(int j = 0; j<4; j++){
+            newDemand[j] = demand[j];
+        }
+        double[] ColDif = new double[4];
+        double[] RowDif = new double[3];
+        while(true){
+            findDiff(ColDif,RowDif,cost,newDemand,newSupply);
+            double maxDif=-1;
+            int index = -1;
+            boolean isCol = true;
+            for(int i = 0; i < 3; i++){
+                if(RowDif[i]>maxDif){
+                    maxDif = RowDif[i];
+                    isCol = false;
+                    index = i;
+                }
+            }
+            for(int i = 0; i < 4; i++){
+                if(ColDif[i]>maxDif){
+                    maxDif = ColDif[i];
+                    isCol = true;
+                    index = i;
+                }
+            }
+            int curSup = -1,curDem = -1;
+            if(isCol){
+                curDem = index;
+                double min = Double.MAX_VALUE;
+                for(int i = 0; i < 3; i++) {
+                    if (cost[i][curDem] < min && RowDif[i] != -1) {
+                        min = cost[i][curDem];
+                        curSup = i;
+                    }
+                }
+                if(newDemand[curDem]<newSupply[curSup]){
+                    result[curSup][curDem] = newDemand[curDem];
+                    newSupply[curSup] = newSupply[curSup]-newDemand[curDem];
+                    newDemand[curDem] = 0;
+                } else if (newDemand[curDem]>newSupply[curSup]) {
+                    result[curSup][curDem] = newSupply[curSup];
+                    newDemand[curDem] = newDemand[curDem]-newSupply[curSup];
+                    newSupply[curSup] = 0;
+                } else {
+                    result[curSup][curDem] = newSupply[curSup];
+                    newDemand[curDem] = 0;
+                    newSupply[curSup] = 0;
+                }
+            }else{
+                curSup = index;
+                double min = Double.MAX_VALUE;
+                for(int i = 0; i < 4; i++) {
+                    if (cost[curSup][i] < min && ColDif[i] != -1) {
+                        min = cost[curSup][i];
+                        curDem = i;
+                    }
+                }
+                if(newDemand[curDem]<newSupply[curSup]){
+                    result[curSup][curDem] = newDemand[curDem];
+                    newSupply[curSup] = newSupply[curSup]-newDemand[curDem];
+                    newDemand[curDem] = 0;
+                } else if (newDemand[curDem]>newSupply[curSup]) {
+                    result[curSup][curDem] = newSupply[curSup];
+                    newDemand[curDem] = newDemand[curDem]-newSupply[curSup];
+                    newSupply[curSup] = 0;
+                } else {
+                    result[curSup][curDem] = newSupply[curSup];
+                    newDemand[curDem] = 0;
+                    newSupply[curSup] = 0;
+                }
+            }
+
+            boolean Flag = true;
+            for(int i = 0;i < 3; i++){
+                if(newSupply[i] !=0){
+                    Flag = false;
+                    break;
+                }
+            }
+            for(int i = 0;i < 4; i++){
+                if(!Flag){
+                    break;
+                }
+                if(newDemand[i] !=0){
+                    Flag = false;
+                }
+            }
+            if(Flag){
+                break;
             }
         }
 
-        double[] x = Arrays.copyOf(x0, x0.length);
-        int counter = 0;
-        while (true) {
-            counter++;
-            double[] D = diagonalMatrix(x);
-            double[][] A_tilda = matrixMultiply(A, diagonalToMatrix(D));
-            double[] c_tilda = vectorMultiply(D, C);
-            double[][] A_rev = matrixMultiply(A_tilda, transpose(A_tilda));
-            double[][] mult = matrixMultiply(transpose(A_tilda),matrixMultiply(inverse(matrixMultiply(A_tilda, transpose(A_tilda))),A_tilda));
-            double[][] P = subtractMatrices(identityMatrix(mult.length), mult);
-            double[] c_p = matrixVectorMultiply(P, c_tilda);
-            double minimum = Arrays.stream(c_p).min().getAsDouble();
+        System.out.println("2.Using Vogel’s approximation method:");
+        printMatrix(result);
+        return result;
+    }
 
-            if (minimum >= 0.1) {
-                System.out.println("The method is not applicable!");
-                return;
+
+    public static double[][] russell(double[][] cost, double[] supply, double[] demand) {
+        double[][] result = new double[3][4];
+        double[] newDemand = new double[4];
+        double[] newSupply = new double[3];
+        for(int i = 0; i<3; i++){
+            for(int j = 0; j<4; j++){
+                result[i][j] = 0;
+            }
+            newSupply[i] = supply[i];
+        }
+        for(int j = 0; j<4; j++){
+            newDemand[j] = demand[j];
+        }
+        double[] U = new double[3];
+        double[] V = new double[4];
+        while(true){
+            for(int i = 0; i < 3; i++){
+                if(newSupply[i]==0){
+                    continue;
+                }
+                U[i]=Double.MIN_VALUE;
+                for(int j = 0; j < 4; j++){
+                    if(newDemand[j]==0){
+                        continue;
+                    }
+                    if(U[i]<cost[i][j] && newSupply[i]!=0 && newDemand[j]!=0){
+                        U[i]=cost[i][j];
+                    }
+                }
+            }
+            for(int i = 0; i < 4; i++){
+                if(newDemand[i]==0){
+                    continue;
+                }
+                V[i]=Double.MIN_VALUE;
+                for(int j = 0; j < 3; j++){
+                    if(newSupply[j]==0){
+                        continue;
+                    }
+                    if(V[i]<cost[j][i]){
+                        V[i]=cost[j][i];
+                    }
+                }
             }
 
-            double v = Math.abs(minimum);
-            double[] x_tilda = addVectors(scalarMultiply(alpha / v, c_p), 1);
-            double[] x_star = vectorMultiply(D, x_tilda);
+            double max = 0;
+            int curSup = -1, curDem = -1;
+            for(int i = 0; i < 3; i++){
+                if(newSupply[i]==0){
+                    continue;
+                }
+                for(int j = 0; j < 4; j++){
+                    if(newDemand[j]==0){
+                        continue;
+                    }
+                    double value = Math.abs(cost[i][j] - U[i] - V[j]);
+                    if(value>max){
+                        max = value;
+                        curSup = i;
+                        curDem = j;
+                    }
+                }
+            }
 
-            if (counter == 100) {
+            if(newDemand[curDem]<newSupply[curSup]){
+                result[curSup][curDem] = newDemand[curDem];
+                newSupply[curSup] = newSupply[curSup]-newDemand[curDem];
+                newDemand[curDem] = 0;
+            } else if (newDemand[curDem]>newSupply[curSup]) {
+                result[curSup][curDem] = newSupply[curSup];
+                newDemand[curDem] = newDemand[curDem]-newSupply[curSup];
+                newSupply[curSup] = 0;
+            } else {
+                result[curSup][curDem] = newSupply[curSup];
+                newDemand[curDem] = 0;
+                newSupply[curSup] = 0;
+            }
+
+            boolean Flag = true;
+            for(int i = 0;i < 3; i++){
+                if(newSupply[i] !=0){
+                    Flag = false;
+                    break;
+                }
+            }
+            for(int i = 0;i < 4; i++){
+                if(!Flag){
+                    break;
+                }
+                if(newDemand[i] !=0){
+                    Flag = false;
+                }
+            }
+            if(Flag){
                 break;
             }
 
-            double da = norm(subtractVectors(x_star, x));
-            if (da <= eps) {
-                System.out.println("Solution for α = " + alpha + ": " + Arrays.toString(x_star));
-                double objectiveValue = dotProduct(C, x_star);
-                System.out.println("Objective function value: " + objectiveValue);
-                return;
-            }
-
-            x = x_star;
         }
 
-        System.out.println("The problem does not have a solution!");
-    }
-
-    public static class Tableau {
-        private final double[][] data;
-
-        public Tableau(double[][] data) {
-            this.data = data;
-        }
-
-        public double getElement(int row, int col) {
-            return data[row][col];
-        }
-    }
-
-    public static Tableau simplexMethod(double[] C, double[][] A, double[] B, int numVariables, int numConstraints) {
-        double[][] tableau = initializeTableau(C, A, B, numVariables, numConstraints);
-
-        while (true) {
-            int enteringVariable = findEnteringVariable(tableau);
-            if (enteringVariable == -1) {
-                Tableau result = new Tableau(tableau);
-                float[] solution = new float[numVariables];
-                for (int i = 1; i <= numConstraints; i++) {
-                    for (int j = 0; j < numVariables; j++) {
-                        if (result.getElement(i, j) == 1) {
-                            solution[j] = (float) result.getElement(i, numVariables + numConstraints);
-                            break;
-                        }
-                    }
-                }
-
-                System.out.println("Optimal solution x: " + Arrays.toString(solution));
-                System.out.println("Objective function value: " + result.getElement(0, numVariables + numConstraints));
-                return new Tableau(tableau);
-            }
-
-            int leavingVariable = findLeavingVariable(tableau, enteringVariable);
-            if (leavingVariable == -1) {
-                return null;
-            }
-
-            pivot(tableau, leavingVariable, enteringVariable);
-        }
-    }
-
-    private static double[][] initializeTableau(double[] C, double[][] A, double[] B, int numVariables, int numConstraints) {
-        double[][] tableau = new double[numConstraints + 1][numVariables + numConstraints + 1];
-
-        for (int i = 0; i < numVariables; i++) {
-            tableau[0][i] = -C[i];
-        }
-
-        for (int i = 0; i < numConstraints; i++) {
-            for (int j = 0; j < numVariables; j++) {
-                tableau[i + 1][j] = A[i][j];
-            }
-        }
-
-        for (int i = 0; i < numConstraints; i++) {
-            tableau[i + 1][numVariables + i] = 1;
-        }
-
-        for (int i = 0; i < numConstraints; i++) {
-            tableau[i + 1][numVariables + numConstraints] = B[i];
-        }
-
-        return tableau;
-    }
-    private static int findEnteringVariable(double[][] tableau) {
-        int enteringVariable = -1;
-        double minCoefficient = 0;
-        for (int i = 0; i < tableau[0].length - 1; i++) {
-            if (tableau[0][i] < minCoefficient) {
-                minCoefficient = tableau[0][i];
-                enteringVariable = i;
-            }
-        }
-        return enteringVariable;
-    }
-
-    private static int findLeavingVariable(double[][] tableau, int enteringVariable) {
-        int leavingVariable = -1;
-        double minRatio = Double.MAX_VALUE;
-        for (int i = 1; i < tableau.length; i++) {
-            if (tableau[i][enteringVariable] > EPSILON) {
-                double ratio = tableau[i][tableau[i].length - 1] / tableau[i][enteringVariable];
-                if (ratio < minRatio) {
-                    minRatio = ratio;
-                    leavingVariable = i;
-                }
-            }
-        }
-        return leavingVariable;
-    }
-
-    private static void pivot(double[][] tableau, int leavingVariable, int enteringVariable) {
-        double pivotElement = tableau[leavingVariable][enteringVariable];
-
-        for (int j = 0; j < tableau[leavingVariable].length; j++) {
-            tableau[leavingVariable][j] /= pivotElement;
-        }
-
-        for (int i = 0; i < tableau.length; i++) {
-            if (i != leavingVariable) {
-                double factor = tableau[i][enteringVariable];
-                for (int j = 0; j < tableau[i].length; j++) {
-                    tableau[i][j] -= factor * tableau[leavingVariable][j];
-                }
-            }
-        }
-    }
-
-    // Helper methods for matrix and vector operations
-    public static double[] diagonalMatrix(double[] vector) {
-        double[] diagonal = new double[vector.length];
-        for (int i = 0; i < vector.length; i++) {
-            diagonal[i] = vector[i];
-        }
-        return diagonal;
-    }
-
-    public static double[][] diagonalToMatrix(double[] diagonal) {
-        int n = diagonal.length;
-        double[][] matrix = new double[n][n];
-        for (int i = 0; i < n; i++) {
-            matrix[i][i] = diagonal[i];
-        }
-        return matrix;
-    }
-
-    public static double[][] matrixMultiply(double[][] A, double[][] B) {
-        int rowsA = A.length;
-        int colsA = A[0].length;
-        int colsB = B[0].length;
-        double[][] result = new double[rowsA][colsB];
-        for (int i = 0; i < rowsA; i++) {
-            for (int j = 0; j < colsB; j++) {
-                for (int k = 0; k < colsA; k++) {
-                    result[i][j] += A[i][k] * B[k][j];
-                }
-            }
-        }
-        return result;
-    }
-
-    public static double[] matrixVectorMultiply(double[][] A, double[] x) {
-        int rowsA = A.length;
-        int colsA = A[0].length;
-        double[] result = new double[rowsA];
-        for (int i = 0; i < rowsA; i++) {
-            for (int j = 0; j < colsA; j++) {
-                result[i] += A[i][j] * x[j];
-            }
-        }
-        return result;
-    }
-
-    public static double[][] transpose(double[][] A) {
-        int rows = A.length;
-        int cols = A[0].length;
-        double[][] result = new double[cols][rows];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                result[j][i] = A[i][j];
-            }
-        }
-        return result;
-    }
-
-    public static double[][] inverse(double[][] A) {
-        int n = A.length;
-        double[][] augmentedMatrix = new double[n][2 * n];
-
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                augmentedMatrix[i][j] = A[i][j];
-            }
-            augmentedMatrix[i][i + n] = 1;
-        }
-
-        for (int i = 0; i < n; i++) {
-            double diag = augmentedMatrix[i][i];
-            for (int j = 0; j < 2 * n; j++) {
-                augmentedMatrix[i][j] /= diag;
-            }
-
-            for (int k = 0; k < n; k++) {
-                if (k != i) {
-                    double factor = augmentedMatrix[k][i];
-                    for (int j = 0; j < 2 * n; j++) {
-                        augmentedMatrix[k][j] -= factor * augmentedMatrix[i][j];
-                    }
-                }
-            }
-        }
-
-        double[][] inverseMatrix = new double[n][n];
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < n; j++) {
-                inverseMatrix[i][j] = augmentedMatrix[i][j + n];
-            }
-        }
-        return inverseMatrix;
-    }
-
-    public static double[][] identityMatrix(int n) {
-        double[][] result = new double[n][n];
-        for (int i = 0; i < n; i++) {
-            result[i][i] = 1;
-        }
-        return result;
-    }
-
-    public static double[] subtractVectors(double[] a, double[] b) {
-        int n = a.length;
-        double[] result = new double[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = a[i] - b[i];
-        }
-        return result;
-    }
-
-    public static double[][] subtractMatrices(double[][] A, double[][] B) {
-        int rows = A.length;
-        int cols = A[0].length;
-        double[][] result = new double[rows][cols];
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                result[i][j] = A[i][j] - B[i][j];
-            }
-        }
-        return result;
-    }
-
-    public static double[] scalarMultiply(double scalar, double[] vector) {
-        int n = vector.length;
-        double[] result = new double[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = scalar * vector[i];
-        }
-        return result;
-    }
-
-    public static double[] addVectors(double[] a, double scalar) {
-        int n = a.length;
-        double[] result = new double[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = a[i] + scalar;
-        }
-        return result;
-    }
-
-    public static double norm(double[] vector) {
-        double sum = 0;
-        for (double value : vector) {
-            sum += value * value;
-        }
-        return Math.sqrt(sum);
-    }
-
-    public static double dotProduct(double[] a, double[] b) {
-        int n = a.length;
-        double result = 0;
-        for (int i = 0; i < n; i++) {
-            result += a[i] * b[i];
-        }
-        return result;
-    }
-
-    public static double[] vectorMultiply(double[] a, double[] b) {
-        int n = a.length;
-        double[] result = new double[n];
-        for (int i = 0; i < n; i++) {
-            result[i] = a[i] * b[i];
-        }
+        System.out.println("3.Using Russell’s approximation method:");
+        printMatrix(result);
         return result;
     }
 }
