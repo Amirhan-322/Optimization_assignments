@@ -5,13 +5,13 @@ public class Main {
         Scanner scanner = new Scanner(System.in);
 
         System.out.print("S: ");
-        double[] supply = readVector(scanner);
+        int[] supply = readVector(scanner);
 
         System.out.println("C:");
-        double[][] costMatrix = readMatrix(scanner, supply.length);
+        int[][] costMatrix = readMatrix(scanner, supply.length);
 
         System.out.print("D: ");
-        double[] demand = readVector(scanner);
+        int[] demand = readVector(scanner);
 
         checkBalance(supply,demand);
         printInputTable(costMatrix, supply, demand);
@@ -22,8 +22,8 @@ public class Main {
 
     }
 
-    private static void checkBalance(double[] supply, double[] demand){
-        double value = 0;
+    private static void checkBalance(int[] supply, int[] demand){
+        int value = 0;
         for(int i = 0; i < 3; i++){
             value+=supply[i];
         }
@@ -37,11 +37,11 @@ public class Main {
     }
 
 
-    private static void printInputTable(double[][] costMatrix, double[] supply, double[] demand) {
+    private static void printInputTable(int[][] costMatrix, int[] supply, int[] demand) {
         int rows = costMatrix.length;
         int cols = costMatrix[0].length;
-
-        System.out.print("     ");
+        System.out.println();
+        System.out.print("   ");
         for (int j = 0; j < cols; j++) {
             System.out.printf("D%d  ", j + 1);
         }
@@ -50,56 +50,56 @@ public class Main {
         for (int i = 0; i < rows; i++) {
             System.out.printf("S%d  ", i + 1);
             for (int j = 0; j < cols; j++) {
-                System.out.printf("%.3f  ", costMatrix[i][j]);
+                System.out.printf("%d  ", costMatrix[i][j]);
             }
-            System.out.printf("%.3f\n", supply[i]);
+            System.out.printf("%d\n", supply[i]);
         }
 
         System.out.print("Demand: ");
         for (int j = 0; j < cols; j++) {
-            System.out.printf("%.3f  ", demand[j]);
+            System.out.printf("%d  ", demand[j]);
         }
         System.out.println();
         System.out.println();
     }
 
-    private static double[] readVector(Scanner scanner) {
+    private static int[] readVector(Scanner scanner) {
         String input = scanner.nextLine();
         String[] parts = input.split(" ");
-        double[] vector = new double[parts.length];
+        int[] vector = new int[parts.length];
         for (int i = 0; i < parts.length; i++) {
-            vector[i] = Double.parseDouble(parts[i]);
+            vector[i] = Integer.parseInt(parts[i]);
         }
         return vector;
     }
 
 
-    public static double[][] readMatrix(Scanner scanner, int rows) {
-        double[][] matrix = new double[rows][];
+    public static int[][] readMatrix(Scanner scanner, int rows) {
+        int[][] matrix = new int[rows][];
         for (int i = 0; i < rows; i++) {
             String[] input = scanner.nextLine().split(" ");
-            matrix[i] = new double[input.length];
+            matrix[i] = new int[input.length];
             for (int j = 0; j < input.length; j++) {
-                matrix[i][j] = Double.parseDouble(input[j]);
+                matrix[i][j] = Integer.parseInt(input[j]);
             }
         }
         return matrix;
     }
 
-    public static void printMatrix(double[][] matrix) {
+    public static void printMatrix(int[][] matrix) {
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 4; j++) {
-                System.out.printf("%.3f ", matrix[i][j]);
+                System.out.printf("%d ", matrix[i][j]);
             }
             System.out.println();
         }
         System.out.println();
     }
 
-    public static double[][] northWest(double[][] cost, double[] supply, double[] demand){
-        double[][] result = new double[3][4];
-        double[] newDemand = new double[4];
-        double[] newSupply = new double[3];
+    public static int[][] northWest(int[][] cost, int[] supply, int[] demand){
+        int[][] result = new int[3][4];
+        int[] newDemand = new int[4];
+        int[] newSupply = new int[3];
         for(int i = 0; i<3; i++){
             for(int j = 0; j<4; j++){
                 result[i][j] = 0;
@@ -134,14 +134,14 @@ public class Main {
         return result;
     }
 
-    public static void findDiff(double[] ColDif, double[] RowDif, double[][] cost, double[] newDemand, double[] newSupply) {
+    public static void findDiff(int[] ColDif, int[] RowDif, int[][] cost, int[] newDemand, int[] newSupply) {
         for(int i = 0; i < 4; i++){
             if(newDemand[i]==0){
                 ColDif[i]=-1;
                 continue;
             }
-            double min1 = Double.MAX_VALUE;
-            double min2 = Double.MAX_VALUE;
+            int min1 = Integer.MAX_VALUE;
+            int min2 = Integer.MAX_VALUE;
             for(int j = 0; j < 3; j++){
                 if(min2>cost[j][i] && newSupply[j]!=0){
                     min2 = cost[j][i];
@@ -151,10 +151,10 @@ public class Main {
                     }
                 }
             }
-            if(min2 != Double.MAX_VALUE) {
+            if(min2 != Integer.MAX_VALUE) {
                 ColDif[i] = min2 - min1;
             }else{
-                ColDif[i] = Double.MAX_VALUE;
+                ColDif[i] = Integer.MAX_VALUE;
             }
         }
         for(int i = 0; i < 3; i++){
@@ -162,8 +162,8 @@ public class Main {
                 RowDif[i]=-1;
                 continue;
             }
-            double min1 = Double.MAX_VALUE;
-            double min2 = Double.MAX_VALUE;
+            int min1 = Integer.MAX_VALUE;
+            int min2 = Integer.MAX_VALUE;
             for(int j = 0; j < 4; j++){
                 if(min2>cost[i][j] && newDemand[j]!=0){
                     min2 = cost[i][j];
@@ -173,19 +173,19 @@ public class Main {
                     }
                 }
             }
-            if(min2 != Double.MAX_VALUE) {
+            if(min2 != Integer.MAX_VALUE) {
                 RowDif[i] = min2-min1;
             }else{
-                RowDif[i] = Double.MAX_VALUE;
+                RowDif[i] = Integer.MAX_VALUE;
             }
 
         }
     }
 
-    public static double[][] vogel(double[][] cost, double[] supply, double[] demand){
-        double[][] result = new double[3][4];
-        double[] newDemand = new double[4];
-        double[] newSupply = new double[3];
+    public static int[][] vogel(int[][] cost, int[] supply, int[] demand){
+        int[][] result = new int[3][4];
+        int[] newDemand = new int[4];
+        int[] newSupply = new int[3];
         for(int i = 0; i<3; i++){
             for(int j = 0; j<4; j++){
                 result[i][j] = 0;
@@ -195,11 +195,11 @@ public class Main {
         for(int j = 0; j<4; j++){
             newDemand[j] = demand[j];
         }
-        double[] ColDif = new double[4];
-        double[] RowDif = new double[3];
+        int[] ColDif = new int[4];
+        int[] RowDif = new int[3];
         while(true){
             findDiff(ColDif,RowDif,cost,newDemand,newSupply);
-            double maxDif=-1;
+            int maxDif=-1;
             int index = -1;
             boolean isCol = true;
             for(int i = 0; i < 3; i++){
@@ -219,7 +219,7 @@ public class Main {
             int curSup = -1,curDem = -1;
             if(isCol){
                 curDem = index;
-                double min = Double.MAX_VALUE;
+                int min = Integer.MAX_VALUE;
                 for(int i = 0; i < 3; i++) {
                     if (cost[i][curDem] < min && RowDif[i] != -1) {
                         min = cost[i][curDem];
@@ -241,7 +241,7 @@ public class Main {
                 }
             }else{
                 curSup = index;
-                double min = Double.MAX_VALUE;
+                int min = Integer.MAX_VALUE;
                 for(int i = 0; i < 4; i++) {
                     if (cost[curSup][i] < min && ColDif[i] != -1) {
                         min = cost[curSup][i];
@@ -289,10 +289,10 @@ public class Main {
     }
 
 
-    public static double[][] russell(double[][] cost, double[] supply, double[] demand) {
-        double[][] result = new double[3][4];
-        double[] newDemand = new double[4];
-        double[] newSupply = new double[3];
+    public static int[][] russell(int[][] cost, int[] supply, int[] demand) {
+        int[][] result = new int[3][4];
+        int[] newDemand = new int[4];
+        int[] newSupply = new int[3];
         for(int i = 0; i<3; i++){
             for(int j = 0; j<4; j++){
                 result[i][j] = 0;
@@ -302,14 +302,14 @@ public class Main {
         for(int j = 0; j<4; j++){
             newDemand[j] = demand[j];
         }
-        double[] U = new double[3];
-        double[] V = new double[4];
+        int[] U = new int[3];
+        int[] V = new int[4];
         while(true){
             for(int i = 0; i < 3; i++){
                 if(newSupply[i]==0){
                     continue;
                 }
-                U[i]=Double.MIN_VALUE;
+                U[i]=Integer.MIN_VALUE;
                 for(int j = 0; j < 4; j++){
                     if(newDemand[j]==0){
                         continue;
@@ -323,7 +323,7 @@ public class Main {
                 if(newDemand[i]==0){
                     continue;
                 }
-                V[i]=Double.MIN_VALUE;
+                V[i]=Integer.MIN_VALUE;
                 for(int j = 0; j < 3; j++){
                     if(newSupply[j]==0){
                         continue;
@@ -334,7 +334,7 @@ public class Main {
                 }
             }
 
-            double max = 0;
+            int max = 0;
             int curSup = -1, curDem = -1;
             for(int i = 0; i < 3; i++){
                 if(newSupply[i]==0){
@@ -344,7 +344,7 @@ public class Main {
                     if(newDemand[j]==0){
                         continue;
                     }
-                    double value = Math.abs(cost[i][j] - U[i] - V[j]);
+                    int value = Math.abs(cost[i][j] - U[i] - V[j]);
                     if(value>max){
                         max = value;
                         curSup = i;
